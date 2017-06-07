@@ -1,6 +1,4 @@
-<<<<<<< HEAD
-# 2PhaseCommit
-2 Phase Commit using Python 3
+
 =======
 # Two-phases-commit
 
@@ -91,10 +89,3 @@ In this project, fabfile will be run on server machine for simplicity.
    - check data validation before inserting/deleting. Keep in mind return value could be None.
    - Make the best use of try-catch block. Wrap the code that fires up remote procedure call around try-catch blocks. This is useful to traceroute issues.
 
-
-## License
-
-Produced by Yongjun
-
-
->>>>>>> Create README.md
