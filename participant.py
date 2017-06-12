@@ -17,7 +17,7 @@ class Participant:
             print "Error %s"%e.args[0]
             sys.exit()
 
-    def rep_recover(self):
+    def par_recover(self):
         last_line = ""
         self.file = open(self.name + ".log", "r+")
         for line in self.file:
@@ -44,7 +44,7 @@ class Participant:
         self.isRecover = 0
 
 
-    def rep_get(self, key):
+    def par_get(self, key):
         ret = ""
         print self.name
         self.file = open(self.name+'.log', 'a+')
@@ -57,35 +57,52 @@ class Participant:
             print e.args
         return str(ret)
 
-    def rep_put(self, key, value):
-        self.file = open(self.name + '.log', 'a+')
-        self.file.write(" put " + key + " "+ value)
-        try:
-            self.cur.execute('INSERT OR REPLACE INTO Info VALUES(?,?)', (key, value))
-        except lite.Error, e:
-            print e.args
-        return True
-
-    def rep_del(self, key):
-        self.file = open(self.name + '.log', 'a+')
-        self.file.write(" del " + key)
-        self.file.flush()
-        try:
-            self.cur.execute('DELETE FROM Info WHERE key = ?', key)
-        except Exception, e:
-            print e.args
-        return True
-
-    def rep_decide(self, key):
-        line = self.log.readline()
-        params = line.split(" ")
-        if(params[0] == 1):
-            self.rep_recover()
+    def par_put(self, key, value):
+        flag = self.par_decide(key)
+        if int(key) != 1:
+            self.file = open(self.name + '.log', 'a+')
+            self.file.write(" put " + key + " "+ value)
+            if flag == True and int(key)!=2:
+                try:
+                    self.cur.execute('INSERT OR REPLACE INTO Info VALUES(?,?)', (key, value))
+                except lite.Error, e:
+                    print e.args
+                return True
+            else:
+                return False
+        else:
             return False
+
+    def par_del(self, key):
+
+        flag = self.par_decide(key)
+        if int(key) != 1:
+            self.file = open(self.name + '.log', 'a+')
+            self.file.write(" del " + key)
+            self.file.flush()
+            if flag == True and int(key) != 2:
+                try:
+                    self.cur.execute('DELETE FROM Info WHERE key = ?', key)
+                except Exception, e:
+                    print e.args
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    def par_decide(self, key):
+        """line = self.log.readline()
+        print line
+        params = line.split(" ")"""
+        if key == 1:
+            return False
+        elif key == 2:
+            return True
         else:
             return True
 
-    def rep_commit(self):
+    def par_commit(self):
         try:
             self.conn.commit()
         except lite.Error, e:
@@ -95,7 +112,7 @@ class Participant:
         self.file.flush()
         return True
 
-    def rep_abort(self):
+    def par_abort(self):
         """
         try:
             self.conn.abort()
