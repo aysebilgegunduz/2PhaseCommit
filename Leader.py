@@ -129,7 +129,7 @@ class Leader:
 
 def main():
     leader = Leader()
-    participant_add = ["http://localhost:5001"]#, "http://localhost:5002"]
+    participant_add = ["http://localhost:5001", "http://localhost:5002"]
     for add in participant_add:
         try:
             client = xmlrpclib.ServerProxy(add)
