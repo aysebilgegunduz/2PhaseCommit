@@ -84,8 +84,11 @@ In this project, fabfile will be run on server machine for simplicity.
    
 ## Error Handling
    - Log Table:
-     There are four states: 1 for getkey request received; 2 for getkey request completed; 3 for put/del request received; 4         for put/del requeset completed. Every successful operation should have two records in log table: either a pair of (1, 2) or      (3, 4). For instance, if a [put] request is sent, server is designed to check log table in order to detect any uncompleted      processes. A missing record of state 4 indicates unsuccessful/uncompleted communication, consequently puts the system           on hold.
+     There are four states: 1 for getkey request received; 2 for getkey request completed; 3 for put/del request received; 4         for put/del requeset completed. Every successful operation should have two records in log table: either a pair of (1, 2) or      (3, 4). For instance, if a [put] request is sent, server is designed to check log table in order to detect any uncompleted      processes.
+      A missing record of state 4 indicates unsuccessful/uncompleted communication, consequently puts the system
+                on hold.
 
    - check data validation before inserting/deleting. Keep in mind return value could be None.
-   - Make the best use of try-catch block. Wrap the code that fires up remote procedure call around try-catch blocks. This is useful to traceroute issues.
+   - Make the best use of try-catch block. Wrap the code that fires up remote procedure call around try-catch blocks.
+   This is useful to traceroute issues.
 

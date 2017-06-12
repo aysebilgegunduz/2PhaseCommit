@@ -1,21 +1,19 @@
 import xmlrpclib
 import random
 import threading
-from SimpleXMLRPCServer import SimpleXMLRPCServer
-from multiprocessing import Lock
-
+import sys
 
 class Coordinator:
 
 	def __init__(self):
-		self.replicas = []
-		self.replica_add = []
+		self.participants = []
+		self.participant_add = []
 		self.lock = threading.Lock()
 		self.file = open("Coor.log", "a+")
 		self.tran_id = 0
 		self.isRecover = 0
 		# self.recover()
-
+	flag = False
 	def recover(self):
 		last_line = ""
 		self.file = open("Coor.log", "r+")
@@ -23,25 +21,25 @@ class Coordinator:
 		for line in self.file:
 			last_line = line
 
-		para = last_line.split(" ")
-		print para
+		param = last_line.split(" ")
+		print param
 		
-		if(str(para[-1]) == "Commit\n" or str(para[-1]) == "Abort\n"):
+		if(str(param[-1]) == "Commit\n" or str(param[-1]) == "Abort\n"):
+			print "Do not need to recover"
 			return True
-		# 	self.replica_add = para[1].split(",")
-		# 	for add in self.replica_add:
-		# 		self.replicas.append(xmlrpclib.ServerProxy(add))
 		
-		action = para[0]
+		action = param[0]
 		self.isRecover = 1
 
 		if action == "put":
-			print "recover"
-			self.co_put(para[1], para[2])
+			print "recover put func"
+			self.co_put(param[1], param[2])
 		elif action == "get":
-			self.co_get(para[1])
+			print "recover get func"
+			self.co_get(param[1])
 		elif action == "del":
-			self.co_del(para[1])
+			print "recover del func"
+			self.co_del(param[1])
 
 		self.isRecover = 0
 
@@ -54,11 +52,11 @@ class Coordinator:
 
 		print "isRecover" + str(self.isRecover)
 		if not self.isRecover:
-			self.file.write("put" + " " + key + " " + value)
+			self.file.write(" put" + " " + key + " " + value)
 
-		flag = ""
 
-		for item in self.replicas:
+
+		for item in self.participants:
 			print item
 			try:
 				flag = item.rep_put(key, value)
@@ -68,7 +66,7 @@ class Coordinator:
 			if(flag == False):
 				self.co_abort()
 				self.file.write(" " + "Abort\n")
-				return false
+				return False
 
 		self.co_commit()
 		self.file.write(" " + "Commit\n")
@@ -79,41 +77,72 @@ class Coordinator:
 	def co_get(self, key):
 		print "co_get"
 		self.file = open("Coor.log", "a+")
-		self.file.write("get " + key)
+		self.file.write(" get " + key)
 
-		random_num = random.randrange(0, len(self.replicas), 1);
-		value = self.replicas[random_num].rep_get(key)
+		random_num = random.randrange(0, len(self.participants), 1);
+		value = self.participants[random_num].rep_get(key)
 		print "Get value %s" % value
 
 		self.file.write(" Commit\n")
+		self.co_commit()
 
-	def co_del(self):
-		pass
+	def co_del(self, key):
+		print "co_del"
+		self.file = open("Coor.log", "a+")
+		self.file.write(" del "+key)
+
+		self.lock.acquire
+		for item in self.participants:
+			print item
+			flag = False
+			try:
+				flag = item.rep_del(key)
+				print "flag: "+str(flag)
+			except Exception,e:
+				print e.args
+			if flag==False :
+				self.co_abort()
+				self.file.write(" "+"Abort\n")
+				return False
+		self.co_commit()
+		self.file.write(" " + "Commit\n")
+		self.file.close()
+		self.lock.release
 
 	def co_commit(self):
-
-		for item in self.replicas:
+		print "Calling all replicas to commit"
+		for item in self.participants:
 			item.rep_commit()
 
+
 	def co_abort(self):
-		for item in self.replicas:
+		print "Calling all replicas to abort"
+		for item in self.participants:
 			item.rep_abort()
 
 def main():
 	coor = Coordinator()
-	replica_add = ["http://localhost:8000"]#, "http://192.168.22.141:8001"]
-	for add in replica_add:
-		client = xmlrpclib.ServerProxy(add)
-		coor.replicas.append(client)
+	participant_add = ["http://localhost:5001","http://localhost:5002" ]
+	for add in participant_add:
+		try:
+			client = xmlrpclib.ServerProxy(add)
+			print client
+		except:
+			print "Wrong one"
 
-	# coor.co_put("3", "this")
+		coor.participants.append(client)
+
 	# coor.recover()
- 	# coor.co_put("2", "hi")
- 	# modify the last transaction to not commit or abort
+	#coor.co_put("2", "Testcase2")
+	#coor.co_put("3", "Testcase3")
+	coor.co_del("2")
+	coor.co_get("2")
+	coor.recover()
+	coor.co_put("2", "hi")
+	# modify the last transaction to not commit or abort
 
- 	# coor.co_get("2")
- 	# coor = Coordinator()
- 	coor.recover()
+	coor.co_get("2")
+	# coor = Coordinator()
 
 
 if __name__ == '__main__':
