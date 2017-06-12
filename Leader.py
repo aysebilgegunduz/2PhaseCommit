@@ -12,7 +12,6 @@ class Leader:
         self.tran_id = 0
         self.isRecover = 0
 
-    # self.recover()
     flag = False
 
     def recover(self):
@@ -29,33 +28,27 @@ class Leader:
             print "Do not need to recover"
             return True
 
-        action = param[0]
+        action = param[1]
         self.isRecover = 1
-
+        self.lock.acquire()
         if action == "put":
             print "recover put func"
-            self.lead_put(param[1], param[2])
+            self.lead_commit()
+            self.file.write(" " + "Commit\n")
         elif action == "get":
             print "recover get func"
-            self.lead_get(param[1])
+            self.lead_get(param[2])
         elif action == "del":
             print "recover del func"
-            self.lead_del(param[1])
-
+            self.lead_del(param[2])
+        self.file.close()
+        self.lock.release()
         self.isRecover = 0
-
-    def p_recover(self, key):
-        for item in self.participants:
-            item.par_recover()
 
     def lead_put(self, key, value):
         print "lead_put"
         self.lock.acquire()
         self.file = open("Lead.log", "a+")
-
-        print "isRecover " + str(self.isRecover)
-        if not self.isRecover:
-            self.file.write(" put" + " " + key + " " + value)
         for item in self.participants:
             print item
             try:
@@ -63,17 +56,20 @@ class Leader:
                 print "flag: " + str(flag)
             except Exception, e:
                 print e.args
-            if (flag == False):
+            if flag == False:
                 self.lead_abort()
                 self.file.write(" " + "Abort\n")
                 return False
-        if int(key) != 4:
-            self.lead_commit()
-            self.file.write(" " + "Commit\n")
-            self.file.close()
-            self.lock.release()
-        else:
-            print "Leader said yes then vanish, participants blocked"
+            elif int(key) == 2:
+                self.file.write(" put" + " " + key + " " + value)
+        if int(key) !=2:
+            if int(key) != 4:
+                self.lead_commit()
+                self.file.write(" " + "Commit\n")
+            else:
+                print "Leader said yes then vanish, participants blocked"
+        self.file.close()
+        self.lock.release()
 
     def lead_get(self, key):
         print "lead_get"
@@ -126,6 +122,10 @@ class Leader:
         for item in self.participants:
             item.par_abort()
 
+    def p_recover(self):
+        for item in self.participants:
+            item.par_recover()
+
 
 def main():
     leader = Leader()
@@ -140,19 +140,25 @@ def main():
         leader.participants.append(client)
 
     # leader.recover()
-    leader.lead_put("4", "Testcase4")
-    leader.lead_put("3", "Testcase3")
-    leader.lead_del("1")
-    # leader.lead_get("2")
-    # leader.lead_abort()
-    # leader.recover()
 
-    # one of them will died so false will come back but then it will recover.
-    leader.lead_put("2", "hi")
-    leader.p_recover()
-    # leader.lead_put("1", "Test")
+    print "Happy Path: "
+    leader.lead_put("3", "Testcase3") #3 means happy path
+    print"\n"
 
-    # leader.lead_get("2")
+    print "Leader vanish : "
+    leader.lead_put("4", "Testcase4") #4 means leader will fail
+    print"\n"
 
+    print "Participants fail before voting: "
+    leader.lead_del("1") #1 means participant fail before voting
+    print"\n"
+
+    print "Participants fail after yes voting: "
+    leader.lead_put("2", "hi") #2 means participant will fail after yes voting
+    print"\n"
+
+    print "Recover participants and go on where they left: "
+    leader.p_recover() #to recover participant
+    leader.recover() #to recover leader
 if __name__ == '__main__':
     main()

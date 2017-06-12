@@ -24,24 +24,25 @@ class Participant:
             last_line= line
         param = last_line.split(" ")
         if(str(param[-1]) == "Commit\n" or str(param[-1]) == "Abort\n"):
-            print " Do not need to recover"
+            self.file.write(" Do not need to recover")
             return True
-        action = param[0]
+        action = param[1]
         if action == "put":
-            print " recover put function"
-            self.cur.execute('INSERT INTO Info VALUES(? , ?)', (param[1], param[2]))
+            self.file.write(" recover put function")
+            #self.cur.execute('INSERT INTO Info VALUES(? , ?)', (param[2], param[3]))
         elif action == "get":
-            print " recover get function"
-            self.cur.execute('SELECT value FROM Info WHERE KEY = ?', param[1])
+            self.file.write(" recover get function")
+            self.cur.execute('SELECT value FROM Info WHERE KEY = ?', param[2])
         elif action == "del":
-            print " recover del function"
-            self.cur.execute('DELETE FROM Info WHERE KEY = ?', param[1])
+            self.file.write(" recover del function")
+            self.cur.execute('DELETE FROM Info WHERE KEY = ?', param[2])
 
         self.conn.commit()
         self.file = open(self.name + ".log", "a+")
         self.file.write(" Commit\n")
         self.file.flush()
         self.isRecover = 0
+        return 1
 
 
     def par_get(self, key):
@@ -65,11 +66,13 @@ class Participant:
             if flag == True and int(key)!=2:
                 try:
                     self.cur.execute('INSERT OR REPLACE INTO Info VALUES(?,?)', (key, value))
+                    self.file.write(key)
                 except lite.Error, e:
                     print e.args
                 return True
             else:
-                return False
+                self.isRecover = 1
+                return self.isRecover
         else:
             return False
 
@@ -92,12 +95,9 @@ class Participant:
             return False
 
     def par_decide(self, key):
-        """line = self.log.readline()
-        print line
-        params = line.split(" ")"""
-        if key == 1:
+        if int(key) == 1:
             return False
-        elif key == 2:
+        elif int(key) == 2:
             return True
         else:
             return True
@@ -113,13 +113,6 @@ class Participant:
         return True
 
     def par_abort(self):
-        """
-        try:
-            self.conn.abort()
-
-        except lite.Error, e:
-            print e.args
-        """
         self.file = open(self.name + ".log", "a+")
         self.file.write(" Abort ")
         self.file.flush()
@@ -127,8 +120,8 @@ class Participant:
 
 def main():
     try:
-        port = int(sys.argv[1])
-        pid = str(sys.argv[2])
+        port = int(sys.argv[1]) #5001
+        pid = str(sys.argv[2]) #"1"
         server = SimpleXMLRPCServer(("localhost", port))
         print("listen")
         participant = Participant(('participant'+pid), port) #pid, port
